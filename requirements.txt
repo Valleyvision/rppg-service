@@ -1,0 +1,12 @@
+# File: requirements.txt
+opencv-python-headless
+numpy
+scipy
+heartpy
+scikit-learn
+fastapi
+uvicorn[standard]
+joblib
+sounddevice
+pydantic>=2
+httpx>=0.27

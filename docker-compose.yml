@@ -1,0 +1,52 @@
+# # File: docker-compose.yml
+# version: "3.9"
+# services:
+#   rppg:
+#     privileged: true
+#     build: .
+#     container_name: rppg-robust
+#     devices:
+#       - "/dev/video0:/dev/video0"
+#       - "/dev/video1:/dev/video1"
+#     group_add:
+#       - "44"  
+#     env_file:
+#       - .env
+#     environment:
+#       - RECORD_DIR=/app/recordings
+#       - PORT=8000
+#     volumes:
+#       - ./recordings:/app/recordings
+#       - ./app:/app/app
+#     ports:
+#       - "7676:8000"  # host:container
+#     restart: unless-stopped
+
+
+services:
+  rppg:
+    
+    privileged: true
+    build: .
+    container_name: rppg-robust
+    devices:
+      - "/dev/video0:/dev/video0"
+      - "/dev/video1:/dev/video1"
+    group_add:
+      - "44" 
+    env_file:
+      - .env
+    environment:
+      - RECORD_DIR=/app/recordings
+      - PORT=8000
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=llama3.2:3b-instruct-q8_0
+      - OLLAMA_TEMPERATURE=0.6
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # let container reach host:11434
+    volumes:
+      - ./recordings:/app/recordings
+      - ./app:/app/app
+    ports:
+      - "7676:8000"
+    restart: unless-stopped

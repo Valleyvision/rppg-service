@@ -1,0 +1,59 @@
+{
+  "request_id": "0224a63760fb",
+  "readings": [
+    {
+      "timestamp": "2025-09-21T08:30:11.821735+00:00",
+      "heart_rate": 69.0,
+      "sdnn": 138.77773329774217,
+      "rmssd": 161.01529717988265,
+      "pnn50": 100.0,
+      "lf": 0.0,
+      "hf": 0.0,
+      "lf_hf": 0.0,
+      "spo2": 95.55106468914201,
+      "systolic": 102.7,
+      "diastolic": 61.8,
+      "luminosity": 141.6430051744157,
+      "stress_level": "Low Stress",
+      "perfusion_index": 0.06260213322937923,
+      "hb_estimate_g_dl": 14.047691259404294,
+      "hb_confidence": 0.12520426645875846,
+      "hb_method": "ppg_proxy_linear"
+    },
+    {
+      "timestamp": "2025-09-21T08:30:22.314250+00:00",
+      "heart_rate": 73.5,
+      "sdnn": 227.30302828309763,
+      "rmssd": 306.8658773253662,
+      "pnn50": 100.0,
+      "lf": 0.0,
+      "hf": 0.0,
+      "lf_hf": 0.0,
+      "spo2": 94.44516221657733,
+      "systolic": 104.05,
+      "diastolic": 62.7,
+      "luminosity": 135.40583702913293,
+      "stress_level": "Low Stress",
+      "perfusion_index": 0.02163967836587106,
+      "hb_estimate_g_dl": 14.174649726856154,
+      "hb_confidence": 0.04327935673174212,
+      "hb_method": "ppg_proxy_linear"
+    }
+  ],
+  "aggregate": {
+    "heart_rate": 71.25,
+    "sdnn": 183.0403807904199,
+    "rmssd": 233.94058725262443,
+    "pnn50": 100.0,
+    "lf": 0.0,
+    "hf": 0.0,
+    "lf_hf": 0.0,
+    "spo2": 94.99811345285967,
+    "systolic": 103.375,
+    "diastolic": 62.25,
+    "luminosity": 138.5244211017743,
+    "perfusion_index": 0.04212090579762515,
+    "hb_estimate_g_dl": 14.111170493130224,
+    "stress_level": "Low Stress"
+  }
+}
