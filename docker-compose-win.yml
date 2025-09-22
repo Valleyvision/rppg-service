@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  rppg:
+    build: .
+    container_name: rppg-robust
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - "/dev/video0:/dev/video0"
+      - "/dev/video1:/dev/video1"
+    group_add:
+      - "44"             # numeric GID for 'video' on Debian
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # reach Ollama on the Windows host
+    volumes:
+      - ./recordings:/app/recordings
+      - ./app:/app/app
+    ports:
+      - "7676:8000"      # host:container

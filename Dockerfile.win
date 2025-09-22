@@ -1,0 +1,31 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Camera tools and libs
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      v4l-utils usbutils ffmpeg \
+      libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libstdc++6 \
+   && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Python deps
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# App
+COPY app /app/app
+RUN mkdir -p /app/recordings
+
+# Ensure user is in 'video' group (GID 44 on Debian)
+RUN groupadd -g 44 video || true \
+ && useradd -m -u 1001 -G video appuser \
+ && chown -R appuser:appuser /app
+
+USER appuser
+
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
