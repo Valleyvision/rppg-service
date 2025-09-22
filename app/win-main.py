@@ -1,3 +1,4 @@
+# app/main.py
 import os, json, uuid, logging, time, platform, subprocess, shlex
 from datetime import datetime, timezone
 from collections import deque
@@ -40,7 +41,7 @@ os.makedirs(RECORD_DIR, exist_ok=True)
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)s: %(message)s")
 logger = logging.getLogger("rppg")
 
-app = FastAPI(title="rPPG Robust Service", version="1.3.0")
+app = FastAPI(title="rPPG Robust Service", version="1.4.0")
 
 # -----------------------------
 # Models
@@ -193,64 +194,70 @@ def rr_from_peaks(sig: np.ndarray) -> np.ndarray:
     return rr_s * 1000.0
 
 # -----------------------------
-# Camera handling (Linux, WSL, or native Windows)
+# Camera handling (Linux/WSL vs native Windows)
 # -----------------------------
 IS_WINDOWS = (os.name == "nt") or ("windows" in platform.system().lower())
 
-def _open_cap(idx: int) -> Optional[cv2.VideoCapture]:
-    """Try platform-appropriate backends with fallback."""
-    backends: List[int] = []
-    if IS_WINDOWS:
-        # Native Windows build: prefer DirectShow
-        backends = [cv2.CAP_DSHOW, 0]
-    else:
-        # Linux/WSL/container: prefer V4L2
-        backends = [cv2.CAP_V4L2, 0]
+SAFE_SIZES = [(640, 480), (800, 600), (1280, 720)]
+PIXFMTS = [("MJPG", cv2.VideoWriter_fourcc(*"MJPG")),
+           ("YUYV", cv2.VideoWriter_fourcc(*"YUYV"))]
 
-    for be in backends:
-        try:
-            cap = cv2.VideoCapture(idx, be) if be != 0 else cv2.VideoCapture(idx)
-            if cap.isOpened():
+def _try_open(idx: int, fourcc: Optional[int], size: Tuple[int,int], fps: int) -> Optional[cv2.VideoCapture]:
+    be = cv2.CAP_DSHOW if IS_WINDOWS else cv2.CAP_V4L2
+    cap = cv2.VideoCapture(idx, be)
+    if not cap.isOpened():
+        cap.release(); return None
+    if fourcc is not None:
+        cap.set(cv2.CAP_PROP_FOURCC, fourcc)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, size[0])
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, size[1])
+    cap.set(cv2.CAP_PROP_FPS, fps)
+    ok, _ = cap.read()
+    if not ok:
+        cap.release(); return None
+    return cap
+
+def _open_camera(idx: int, fps: int) -> Optional[cv2.VideoCapture]:
+    # prefer MJPG then YUYV; iterate sizes
+    for name, fcc in PIXFMTS:
+        for w, h in SAFE_SIZES:
+            cap = _try_open(idx, fcc, (w, h), int(fps))
+            if cap:
+                logger.info(f"Using {name} {w}x{h}@{fps} on index {idx}")
                 return cap
-            cap.release()
-        except Exception:
-            pass
+    # last resort without forcing fourcc
+    be = cv2.CAP_DSHOW if IS_WINDOWS else cv2.CAP_V4L2
+    cap = cv2.VideoCapture(idx, be)
+    if cap.isOpened():
+        return cap
+    cap.release()
     return None
 
 def capture_buffers(seconds: float) -> Tuple[np.ndarray, np.ndarray, float]:
-    # try preferred index then common fallbacks
     indices = [CAMERA_INDEX, 0, 1, 2]
     cap = None
     for i in indices:
-        cap = _open_cap(i)
-        if cap:
-            logger.info(f"Opened camera index {i}")
-            break
+        cap = _open_camera(i, int(FS))
+        if cap: break
     if not cap:
         raise RuntimeError(f"Cannot open camera (tried {indices})")
-
-    # attempt fps; many drivers ignore
-    cap.set(cv2.CAP_PROP_FPS, FS)
 
     n = int(FS * seconds)
     buf_g: Deque[float] = deque(maxlen=n)
     buf_r: Deque[float] = deque(maxlen=n)
     buf_l: Deque[float] = deque(maxlen=n)
 
-    # warm-up
     for _ in range(8):
         cap.read(); time.sleep(0.01)
 
     for _ in range(n):
-        ret, frame = cap.read()
-        if not ret:
-            time.sleep(0.005)
-            continue
+        ok, frame = cap.read()
+        if not ok:
+            time.sleep(0.005); continue
         frame = cv2.flip(frame, 1)
         rows, cols = get_roi(frame)
         roi = frame[rows, cols]
-        if roi.size == 0:
-            continue
+        if roi.size == 0: continue
         buf_g.append(float(roi[:, :, 1].mean()))
         buf_r.append(float(roi[:, :, 2].mean()))
         buf_l.append(float(cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY).mean()))
@@ -261,7 +268,7 @@ def capture_buffers(seconds: float) -> Tuple[np.ndarray, np.ndarray, float]:
     return np.asarray(buf_g, float), np.asarray(buf_r, float), float(np.mean(buf_l))
 
 # -----------------------------
-# API endpoints
+# API
 # -----------------------------
 @app.get("/health")
 def health() -> Dict[str, str]:
@@ -271,7 +278,7 @@ def health() -> Dict[str, str]:
 def camera_probe():
     tried = []
     for i in [CAMERA_INDEX, 0, 1, 2]:
-        cap = _open_cap(i)
+        cap = _open_camera(i, int(FS))
         ok = bool(cap)
         if cap: cap.release()
         tried.append({"index": i, "opened": ok})
